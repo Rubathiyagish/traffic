@@ -1,5 +1,5 @@
 import { useLayoutEffect, useMemo, useRef } from "react";
-import type { Analysis, Metric, Region, TripType } from "@/lib/od/types";
+import type { Analysis, Metric, TripType } from "@/lib/od/types";
 import { HEAT } from "@/lib/od/types";
 import {
   aggMetric,
