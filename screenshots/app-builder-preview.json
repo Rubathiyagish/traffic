@@ -1,0 +1,36 @@
+{
+  "url": "http://127.0.0.1:8080/",
+  "viewports": {
+    "desktop": {
+      "width": 1280,
+      "height": 800,
+      "status": 200,
+      "title": "Sharjah Origins",
+      "hasCanvas": false,
+      "bodyTextLen": 25,
+      "bodyTextHash": "bf93c221b239da447cd8021dad98ff2084c41e1ad50403b3b5137cab9032ffb1",
+      "bodyTextPrefix": "Loading Sharjah analysis…",
+      "horizontalOverflow": false,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "screenshot": "/workspace/screenshots/app-builder-preview.png"
+    },
+    "mobile": {
+      "width": 390,
+      "height": 844,
+      "status": 200,
+      "title": "Sharjah Origins",
+      "hasCanvas": false,
+      "bodyTextLen": 1057,
+      "bodyTextHash": "c755a7053b9953bcef4b4396032a9aba19fcf4552ccae67da9c199c7eb00f9f4",
+      "bodyTextPrefix": "Sharjah Origins 05/07/2026 — 11/07/2026 · All day · Asia/Dubai ·",
+      "horizontalOverflow": false,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "screenshot": "/workspace/screenshots/app-builder-preview-mobile.png"
+    }
+  },
+  "brandWarnings": [],
+  "authWarnings": [],
+  "verdictFile": "/workspace/screenshots/app-builder-preview.json"
+}

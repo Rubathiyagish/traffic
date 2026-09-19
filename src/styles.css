@@ -1,0 +1,109 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "IBM Plex Sans", "Noto Sans Arabic", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
+
+  --color-bg: #0c0f14;
+  --color-surface: #151a22;
+  --color-raised: #1c232e;
+  --color-hover: #242c38;
+  --color-fg: #e8eaed;
+  --color-muted: #8b939e;
+  --color-subtle: #5c6570;
+  --color-border: #2a3340;
+  --color-accent: #9eb6c8;
+  --color-accent-fg: #0c0f14;
+  --color-role-o: #7ea8c4;
+  --color-role-d: #d6c4a8;
+  --color-role-v: #5f9b94;
+  --color-danger: #c47a72;
+  --color-ok: #7a9e86;
+
+  --color-heat-0: #1a2c36;
+  --color-heat-1: #214754;
+  --color-heat-2: #2b6874;
+  --color-heat-3: #3d8aa0;
+  --color-heat-4: #b9a888;
+  --color-heat-5: #e4d4bc;
+
+  --radius-xs: 4px;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 24px;
+
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --motion-quick: 150ms;
+  --motion-fast: 250ms;
+}
+
+@layer base {
+  html,
+  body,
+  #app {
+    height: 100%;
+  }
+
+  body {
+    margin: 0;
+    background: var(--color-bg);
+    color: var(--color-fg);
+    font-family: var(--font-sans);
+    font-feature-settings: "ss01" 1, "cv11" 1;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  button:not(:disabled),
+  [role="button"]:not(:disabled) {
+    cursor: pointer;
+  }
+
+  * {
+    box-sizing: border-box;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+.maplibregl-popup-content {
+  background: var(--color-raised);
+  color: var(--color-fg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: 8px 10px;
+  font-size: 12px;
+  box-shadow: 0 8px 24px rgb(0 0 0 / 0.4);
+}
+
+.maplibregl-popup-anchor-bottom .maplibregl-popup-tip {
+  border-top-color: var(--color-raised);
+}
+
+.maplibregl-ctrl-group {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  box-shadow: none;
+}
+
+.maplibregl-ctrl-group button {
+  background: var(--color-surface);
+}
+
+.maplibregl-ctrl-attrib {
+  background: transparent;
+  color: var(--color-subtle);
+  font-size: 10px;
+}
+
+.tabular {
+  font-variant-numeric: tabular-nums;
+}
