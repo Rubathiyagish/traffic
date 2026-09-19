@@ -4,7 +4,7 @@
 
 const SUBDOMAINS = ["a", "b", "c", "d"];
 
-export const TILE_ATTRIBUTION = "© OpenStreetMap contributors © CARTO";
+export const TILE_ATTRIBUTION = "© OpenStreetMap contributors";
 
 /** Mercator y, expressed in "degrees" so it's directly comparable to longitude degrees. */
 export function mercYDeg(lat: number): number {
@@ -55,8 +55,7 @@ export class TileCache {
       entry = { img, loaded: false };
       this.tiles.set(key, entry);
       const s = SUBDOMAINS[(xw + y) % SUBDOMAINS.length];
-      const q = CARTO_KEY ? `?key=${CARTO_KEY}` : "";
-      img.src = `https://${s}.basemaps.cartocdn.com/dark_nolabels/${z}/${xw}/${y}.png${q}`;
+      img.src = `https://tile.openstreetmap.org/${z}/${xw}/${y}.png`;
       img.onload = () => {
         entry!.loaded = true;
         this.onTile();
