@@ -17,6 +17,7 @@ type OdStore = {
   sankeyLimit: number;
   tripTypes: TripType[];
   showArcs: boolean;
+  showLabels: boolean;
   setView: (view: ViewId) => void;
   setMetric: (metric: Metric) => void;
   setLabelMode: (mode: LabelMode) => void;
@@ -31,6 +32,7 @@ type OdStore = {
   toggleTripType: (t: TripType) => void;
   setTripTypes: (types: TripType[]) => void;
   setShowArcs: (on: boolean) => void;
+  setShowLabels: (on: boolean) => void;
   openPair: (o: number, d: number) => void;
 };
 
@@ -49,6 +51,7 @@ export const useOdStore = create<OdStore>((set) => ({
   sankeyLimit: 8,
   tripTypes: [...ALL_TRIP_TYPES],
   showArcs: true,
+  showLabels: false,
   setView: (view) => set({ view }),
   setMetric: (metric) => set({ metric }),
   setLabelMode: (labelMode) => set({ labelMode }),
@@ -74,6 +77,7 @@ export const useOdStore = create<OdStore>((set) => ({
     }),
   setTripTypes: (tripTypes) => set({ tripTypes }),
   setShowArcs: (showArcs) => set({ showArcs }),
+  setShowLabels: (showLabels) => set({ showLabels }),
   openPair: (o, d) =>
     set({
       view: "flows",

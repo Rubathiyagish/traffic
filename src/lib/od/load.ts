@@ -119,6 +119,38 @@ export function flowValue(row: OdRow, types: TripType[]): number {
   return sum;
 }
 
+export function tripTypeMix(analysis: Analysis, types: TripType[]): Record<TripType, number> {
+  const totals: Record<TripType, number> = {
+    contained: 0,
+    inbound: 0,
+    outbound: 0,
+    through: 0,
+  };
+  if (types.length === 0) return totals;
+
+  for (const row of analysis.od) {
+    for (const type of types) {
+      totals[type] += row.types[TYPE_INDEX[type]] ?? 0;
+    }
+  }
+  return totals;
+}
+
+export function pairTypeMix(row: OdRow, types: TripType[]): Record<TripType, number> {
+  const totals: Record<TripType, number> = {
+    contained: 0,
+    inbound: 0,
+    outbound: 0,
+    through: 0,
+  };
+  if (types.length === 0) return totals;
+
+  for (const type of types) {
+    totals[type] = row.types[TYPE_INDEX[type]] ?? 0;
+  }
+  return totals;
+}
+
 export type RegionAgg = {
   origin: number[];
   dest: number[];

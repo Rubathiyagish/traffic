@@ -18,9 +18,7 @@ export function FlowsExplorer({ analysis }: { analysis: Analysis }) {
   const vias = useOdStore((s) => s.vias);
   const toggleRole = useOdStore((s) => s.toggleRole);
   const search = useOdStore((s) => s.search);
-  const setSearch = useOdStore((s) => s.setSearch);
   const selectedId = useOdStore((s) => s.selectedId);
-  const setSelected = useOdStore((s) => s.setSelected);
   const labelMode = useOdStore((s) => s.labelMode);
   const minFlow = useOdStore((s) => s.minFlow);
   const tripTypes = useOdStore((s) => s.tripTypes);

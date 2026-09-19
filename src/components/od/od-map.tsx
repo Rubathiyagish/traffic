@@ -1,5 +1,5 @@
 import { useLayoutEffect, useMemo, useRef } from "react";
-import type { Analysis, Metric, Region, TripType } from "@/lib/od/types";
+import type { Analysis, Metric, TripType } from "@/lib/od/types";
 import { HEAT } from "@/lib/od/types";
 import {
   aggMetric,
@@ -11,6 +11,8 @@ import {
 } from "@/lib/od/load";
 import { flowArc } from "@/lib/od/arcs";
 import { useOdStore } from "@/lib/od/store";
+import { TILE_ATTRIBUTION, TileCache, invMercYDeg, lngLatToTile, mercYDeg, tileToLngLat } from "@/lib/od/tiles";
+import { cn } from "@/lib/utils";
 
 type Props = {
   analysis: Analysis;
@@ -19,6 +21,9 @@ type Props = {
 
 type View = { scale: number; tx: number; ty: number };
 
+/** Uniform-scale Mercator fit of the bbox into the padded canvas — no lat-stretch skew. */
+type Fit = { west: number; mercNorth: number; s: number; offsetX: number; offsetY: number };
+
 export function OdMap({ analysis, flows = [] }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const wrapRef = useRef<HTMLDivElement>(null);
@@ -26,6 +31,9 @@ export function OdMap({ analysis, flows = [] }: Props) {
   const fitted = useRef(false);
   const drag = useRef<{ x: number; y: number; tx: number; ty: number } | null>(null);
   const hoverPx = useRef<{ x: number; y: number } | null>(null);
+  const drawRef = useRef<() => void>(() => {});
+  const tiles = useRef<TileCache | null>(null);
+  if (!tiles.current) tiles.current = new TileCache(() => drawRef.current());
 
   const metric = useOdStore((s) => s.metric);
   const view = useOdStore((s) => s.view);
@@ -37,6 +45,8 @@ export function OdMap({ analysis, flows = [] }: Props) {
   const labelMode = useOdStore((s) => s.labelMode);
   const tripTypes = useOdStore((s) => s.tripTypes);
   const showArcs = useOdStore((s) => s.showArcs);
+  const showLabels = useOdStore((s) => s.showLabels);
+  const setShowLabels = useOdStore((s) => s.setShowLabels);
   const setSelected = useOdStore((s) => s.setSelected);
   const setHovered = useOdStore((s) => s.setHovered);
   const toggleRole = useOdStore((s) => s.toggleRole);
@@ -109,29 +119,78 @@ export function OdMap({ analysis, flows = [] }: Props) {
   const paths = useMemo(() => buildPaths(analysis.geojson), [analysis.geojson]);
 
   const labels = useMemo(() => {
+    if (!showLabels) return [];
     return [...analysis.regions]
       .sort((a, b) => (agg.touch[b.id] ?? 0) - (agg.touch[a.id] ?? 0))
       .slice(0, 12)
       .map((r) => ({ id: r.id, name: regionLabel(r, labelMode), lng: r.lng, lat: r.lat }));
-  }, [analysis.regions, agg, labelMode]);
+  }, [analysis.regions, agg, labelMode, showLabels]);
 
   const hovered = hoveredId != null ? analysis.regions[hoveredId] : null;
 
-  function project(lng: number, lat: number, w: number, h: number, v: View): [number, number] {
+  /** Uniform-scale Mercator fit: both axes use the same px-per-degree factor, so shapes
+   * render true-to-form instead of the skewed look a naive lat/lng stretch produces. */
+  function computeFit(w: number, h: number): Fit {
     const [west, south, east, north] = bbox;
     const pad = 28;
-    const x = pad + ((lng - west) / (east - west)) * (w - pad * 2);
-    const y = pad + ((north - lat) / (north - south)) * (h - pad * 2);
+    const mercNorth = mercYDeg(north);
+    const mercSouth = mercYDeg(south);
+    const mercW = east - west;
+    const mercH = mercNorth - mercSouth;
+    const s = Math.min((w - pad * 2) / mercW, (h - pad * 2) / mercH);
+    const offsetX = pad + (w - pad * 2 - mercW * s) / 2;
+    const offsetY = pad + (h - pad * 2 - mercH * s) / 2;
+    return { west, mercNorth, s, offsetX, offsetY };
+  }
+
+  function project(lng: number, lat: number, fit: Fit, v: View): [number, number] {
+    const x = fit.offsetX + (lng - fit.west) * fit.s;
+    const y = fit.offsetY + (fit.mercNorth - mercYDeg(lat)) * fit.s;
     return [x * v.scale + v.tx, y * v.scale + v.ty];
   }
 
   function hitTest(px: number, py: number, w: number, h: number): number | null {
     const v = viewRef.current;
+    const fit = computeFit(w, h);
     for (let i = paths.length - 1; i >= 0; i--) {
       const p = paths[i]!;
-      if (pointInRings(px, py, p.rings, (lng, lat) => project(lng, lat, w, h, v))) return p.id;
+      if (pointInRings(px, py, p.rings, (lng, lat) => project(lng, lat, fit, v))) return p.id;
     }
     return null;
+  }
+
+  function drawTiles(ctx: CanvasRenderingContext2D, w: number, h: number, fit: Fit, v: View) {
+    const cache = tiles.current;
+    if (!cache) return;
+    // Derive the equivalent slippy-map zoom from our current px-per-degree scale, so
+    // fetched tiles are roughly native resolution at any pan/zoom level.
+    const pxPerDegree = fit.s * v.scale;
+    const zoomCont = Math.log2((pxPerDegree * 360) / 256);
+    const tileZ = Math.max(2, Math.min(18, Math.round(zoomCont)));
+
+    const invLng = (px: number) => fit.west + ((px - v.tx) / v.scale - fit.offsetX) / fit.s;
+    const invLat = (py: number) => invMercYDeg(fit.mercNorth - ((py - v.ty) / v.scale - fit.offsetY) / fit.s);
+
+    const [lng0, lat0] = [invLng(0), invLat(0)];
+    const [lng1, lat1] = [invLng(w), invLat(h)];
+    const [tx0, ty0] = lngLatToTile(lng0, lat0, tileZ);
+    const [tx1, ty1] = lngLatToTile(lng1, lat1, tileZ);
+    const minX = Math.floor(Math.min(tx0, tx1)) - 1;
+    const maxX = Math.ceil(Math.max(tx0, tx1)) + 1;
+    const minY = Math.max(0, Math.floor(Math.min(ty0, ty1)) - 1);
+    const maxY = Math.min(2 ** tileZ - 1, Math.ceil(Math.max(ty0, ty1)) + 1);
+
+    for (let ty = minY; ty <= maxY; ty++) {
+      for (let tx = minX; tx <= maxX; tx++) {
+        const img = cache.get(tileZ, tx, ty);
+        if (!img) continue;
+        const [lngA, latA] = tileToLngLat(tx, ty, tileZ);
+        const [lngB, latB] = tileToLngLat(tx + 1, ty + 1, tileZ);
+        const [x0, y0] = project(lngA, latA, fit, v);
+        const [x1, y1] = project(lngB, latB, fit, v);
+        ctx.drawImage(img, Math.min(x0, x1), Math.min(y0, y1), Math.abs(x1 - x0), Math.abs(y1 - y0));
+      }
+    }
   }
 
   function draw() {
@@ -158,19 +217,24 @@ export function OdMap({ analysis, flows = [] }: Props) {
       fitted.current = true;
       viewRef.current = { scale: 1, tx: 0, ty: 0 };
     }
+    const fit = computeFit(w, h);
+
+    drawTiles(ctx, w, h, fit, v);
 
     for (const p of paths) {
       ctx.beginPath();
       for (const ring of p.rings) {
         ring.forEach(([lng, lat], i) => {
-          const [x, y] = project(lng, lat, w, h, v);
+          const [x, y] = project(lng, lat, fit, v);
           if (i === 0) ctx.moveTo(x, y);
           else ctx.lineTo(x, y);
         });
         ctx.closePath();
       }
       ctx.fillStyle = colorById[p.id] ?? "#1a2c36";
+      ctx.globalAlpha = 0.82;
       ctx.fill("evenodd");
+      ctx.globalAlpha = 1;
       ctx.strokeStyle = "#0c0f14";
       ctx.lineWidth = 0.6;
       ctx.stroke();
@@ -183,7 +247,7 @@ export function OdMap({ analysis, flows = [] }: Props) {
         ctx.beginPath();
         for (const ring of p.rings) {
           ring.forEach(([lng, lat], i) => {
-            const [x, y] = project(lng, lat, w, h, v);
+            const [x, y] = project(lng, lat, fit, v);
             if (i === 0) ctx.moveTo(x, y);
             else ctx.lineTo(x, y);
           });
@@ -200,7 +264,7 @@ export function OdMap({ analysis, flows = [] }: Props) {
     for (const f of flowFc) {
       ctx.beginPath();
       f.coords.forEach(([lng, lat], i) => {
-        const [x, y] = project(lng, lat, w, h, v);
+        const [x, y] = project(lng, lat, fit, v);
         if (i === 0) ctx.moveTo(x, y);
         else ctx.lineTo(x, y);
       });
@@ -213,7 +277,7 @@ export function OdMap({ analysis, flows = [] }: Props) {
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
     for (const lab of labels) {
-      const [x, y] = project(lab.lng, lab.lat, w, h, v);
+      const [x, y] = project(lab.lng, lab.lat, fit, v);
       ctx.lineWidth = 3;
       ctx.strokeStyle = "#0c0f14";
       ctx.strokeText(lab.name, x, y);
@@ -221,6 +285,7 @@ export function OdMap({ analysis, flows = [] }: Props) {
       ctx.fillText(lab.name, x, y);
     }
   }
+  drawRef.current = draw;
 
   useLayoutEffect(() => {
     draw();
@@ -352,6 +417,22 @@ export function OdMap({ analysis, flows = [] }: Props) {
         >
           Fit
         </button>
+        <button
+          type="button"
+          onClick={() => setShowLabels(!showLabels)}
+          className={cn(
+            "flex size-10 items-center justify-center border-t border-border text-xs hover:bg-hover",
+            showLabels ? "text-accent" : "text-muted hover:text-fg",
+          )}
+          aria-label={showLabels ? "Hide district labels" : "Show district labels"}
+          aria-pressed={showLabels}
+          title="Toggle district labels"
+        >
+          Aa
+        </button>
+      </div>
+      <div className="pointer-events-none absolute bottom-1 left-2 z-10 text-[10px] text-subtle/70">
+        {TILE_ATTRIBUTION}
       </div>
       {hovered ? (
         <div
