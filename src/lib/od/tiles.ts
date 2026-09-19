@@ -55,7 +55,7 @@ export class TileCache {
       entry = { img, loaded: false };
       this.tiles.set(key, entry);
       const s = SUBDOMAINS[(xw + y) % SUBDOMAINS.length];
-      const q = CARTO_KEY ? `?key=${CARTO_KEY}` : "";
+      const q = CARTO_KEY ? `?key=${CARTO_KEY}` : "cb1_3qtw_1_529d56f3386ffc5bc0d6b9b3";
       img.src = `https://${s}.basemaps.cartocdn.com/dark_nolabels/${z}/${xw}/${y}.png${q}`;
       img.onload = () => {
         entry!.loaded = true;
