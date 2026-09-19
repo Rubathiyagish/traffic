@@ -10,7 +10,7 @@ export function HeatLegend({
 }) {
   const edges = [0, ...breaks];
   return (
-    <div className="pointer-events-none absolute right-3 bottom-10 z-10 w-44 rounded-md border border-border bg-surface/90 p-3 backdrop-blur-sm">
+    <div className="pointer-events-none absolute bottom-6 left-3 z-10 w-44 rounded-md border border-border bg-surface/90 p-3 backdrop-blur-sm">
       <div className="mb-2 text-xs font-medium tracking-wide text-muted uppercase">{title}</div>
       <div className="flex flex-col gap-1">
         {HEAT.map((c, i) => {
